@@ -1,0 +1,111 @@
+name: Tag Check, Package, Publish and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  check-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Verify tag is on a release branch
+        id: verify_tag
+        shell: bash
+        continue-on-error: true
+        run: |
+          TAG_COMMIT_SHA=$(git rev-parse $GITHUB_REF)
+          echo "Tag commit SHA: $TAG_COMMIT_SHA"
+
+          BRANCHES=$(git branch -r --contains $TAG_COMMIT_SHA)
+          echo "Branches containing the commit of the tag:"
+          echo "$BRANCHES"
+
+          if echo "$BRANCHES" | grep -qE 'origin/release/v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "The tag is on a release branch."
+            echo "tag_valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "The tag is not on a release branch."
+            echo "tag_valid=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Delete Tag
+        if: ${{ steps.verify_tag.outputs.tag_valid == 'false' }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          script: |
+            const tagRef = context.ref; // refs/tags/v1.0.2
+            const tagName = tagRef.replace('refs/tags/', '');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            try {
+              await github.rest.git.deleteRef({
+                owner,
+                repo,
+                ref: `tags/${tagName}`,
+              });
+              core.notice(`Tag '${tagName}' has been deleted.`);
+            } catch (error) {
+              core.setFailed(`Failed to delete tag '${tagName}': ${error.message}`);
+            }
+
+      - name: Fail Job if Tag is Invalid
+        if: ${{ steps.verify_tag.outputs.tag_valid == 'false' }}
+        run: |
+          echo "Failing job because tag is invalid."
+          exit 1
+
+  build-and-release:
+    needs: check-tag
+    runs-on: ubuntu-latest
+    if: ${{ needs.check-tag.result == 'success' }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Update package.json version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "Updating version to $VERSION"
+          npm version --no-git-tag-version $VERSION
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install vsce
+        run: npm install -g @vscode/vsce
+
+      - name: Package Extension
+        run: vsce package
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./focus-flip-${{ env.VERSION }}.vsix
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Extension
+        run: vsce publish
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
