@@ -1,7 +1,9 @@
 {
+  "publisher": "hrnan",
   "name": "focus-flip",
   "displayName": "FocusFlip",
   "description": "Quickly switch between dedicated code and terminal view",
+  "icon": "resources/logo.png",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.63.0"
