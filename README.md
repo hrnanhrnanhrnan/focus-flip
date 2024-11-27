@@ -49,7 +49,7 @@ Add custom keybindings to toggle between views easily. Open your keybindings.jso
 Replace ctrl+alt+1 and ctrl+alt+2 with your preferred key combinations.
 
 ### Limitations
-While switching between views, you may notice some UI elements momentarily appear or disappear (e.g., the sidebar flashing). This is a known limitation of the VS Code API and does not affect functionality.
+While switching between views, you may notice some UI elements momentarily appear or disappear (e.g., the sidebar flashing). Since I could not find any way through the VS Code API to check for views and panels being visible or maximized, and since I don't find this particulary annoying, I don't plan on changing that. 
 
 ### Contribution
 If you’d like to contribute or report issues, visit the GitHub repository.
