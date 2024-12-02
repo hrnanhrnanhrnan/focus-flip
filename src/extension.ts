@@ -35,10 +35,8 @@ async function hidePrimaryBar() {
 }
 
 async function hideTerminalView() {
-  await vscode.commands.executeCommand(
-    "workbench.action.focusFirstEditorGroup"
-  );
-  await vscode.commands.executeCommand("terminal.focus");
+  await focusEditor();
+  await focusTerminal();
   const terminals = vscode.window.terminals;
 
   for (let index = 0; index < terminals.length; index++) {
@@ -47,9 +45,17 @@ async function hideTerminalView() {
 }
 
 async function showTerminalMaximizedView() {
-  await vscode.commands.executeCommand(
-    "workbench.action.focusFirstEditorGroup"
-  );
-  await vscode.commands.executeCommand("terminal.focus");
+  await focusEditor();
+  await focusTerminal();
   await vscode.commands.executeCommand("workbench.action.toggleMaximizedPanel");
+}
+
+async function focusEditor() {
+  await vscode.commands.executeCommand(
+    "workbench.action.focusActiveEditorGroup"
+  );
+}
+
+async function focusTerminal() {
+  await vscode.commands.executeCommand("terminal.focus");
 }
